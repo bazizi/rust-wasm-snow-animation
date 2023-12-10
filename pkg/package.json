@@ -1,0 +1,17 @@
+{
+  "name": "wasm-practice",
+  "collaborators": [
+    "Behnam Azizi <>"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "wasm_practice_bg.wasm",
+    "wasm_practice.js",
+    "wasm_practice.d.ts"
+  ],
+  "module": "wasm_practice.js",
+  "types": "wasm_practice.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
