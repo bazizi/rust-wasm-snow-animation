@@ -9,6 +9,8 @@ use js_sys::Math::random;
 use web_sys::console::log_1 as log;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
+use utils::set_panic_hook;
+
 #[wasm_bindgen]
 extern "C" {
     fn alert(s: &str);
@@ -18,18 +20,34 @@ fn window() -> web_sys::Window {
     web_sys::window().expect("no global `window` exists")
 }
 
+fn document() -> web_sys::Document {
+    window().document().unwrap()
+}
+
 fn request_animation_frame(f: &Closure<dyn FnMut()>) {
     window()
         .request_animation_frame(f.as_ref().unchecked_ref())
         .expect("should register `requestAnimationFrame` OK");
 }
 
+fn create_canvas() -> HtmlCanvasElement {
+    let canv = document()
+        .create_element("canvas")
+        .unwrap()
+        .dyn_into::<HtmlCanvasElement>()
+        .unwrap();
+
+    canv.set_width(window().inner_width().unwrap().as_f64().unwrap() as u32);
+    canv.set_height(window().inner_height().unwrap().as_f64().unwrap() as u32 - 10);
+
+    canv
+}
+
 #[wasm_bindgen]
 pub fn init_rust() {
-    let window = window();
-    let document = window.document().unwrap();
-    let canvas = document.get_element_by_id("canvas");
-    let canvas = canvas.unwrap().dyn_into::<HtmlCanvasElement>().unwrap();
+    set_panic_hook();
+    let canvas = create_canvas();
+    document().body().unwrap().append_child(&canvas).unwrap();
 
     let canvas_context = Rc::new(RefCell::new(
         canvas
@@ -48,7 +66,10 @@ pub fn init_rust() {
 
     const WIDTH: f64 = 50.;
     const HEIGHT: f64 = 50.;
+    const MIN_VELOCITY: f64 = 5.;
+    const MIN_SIZE: f64 = 10.;
     const MAX_ITERATION: u64 = 100;
+    const NUM_PARTICLES: usize = 500;
 
     #[derive(Debug)]
     struct Particle {
@@ -65,13 +86,13 @@ pub fn init_rust() {
             canvas_context: Rc<RefCell<CanvasRenderingContext2d>>,
             canvas_dimentions: (f64, f64),
         ) -> Self {
-            let size = random() * 4.;
+            let size = random() * MIN_SIZE;
             Particle {
                 canvas_context,
                 canvas_dimentions: canvas_dimentions,
                 position: ((canvas_dimentions.0 - size) * random(), 0.),
                 size: (size, size),
-                velocity: (random() * 1. + 0.001, random() * 1. + 1.),
+                velocity: (random() * 1. + 0.001, random() * 5. + MIN_VELOCITY),
                 iteration: 0,
             }
         }
@@ -104,7 +125,7 @@ pub fn init_rust() {
     let particles = Rc::new(RefCell::new(Vec::new()));
 
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
-        if particles.borrow().len() < 500 {
+        if particles.borrow().len() < NUM_PARTICLES {
             particles.borrow_mut().push(Some(Particle::new(
                 Rc::clone(&canvas_context),
                 (canvas_width, canvas_height),
@@ -127,7 +148,8 @@ pub fn init_rust() {
             }
         }
 
-        let part: Vec<Option<Particle>> = particles
+        // get rid of particles that have hit their max iteration
+        let alive_particles: Vec<Option<Particle>> = particles
             .borrow_mut()
             .iter_mut()
             .filter(|particle| {
@@ -136,7 +158,7 @@ pub fn init_rust() {
             .map(|particle| particle.take())
             .collect();
 
-        *particles.borrow_mut() = part;
+        *particles.borrow_mut() = alive_particles;
 
         // Schedule ourself for another requestAnimationFrame callback.
         request_animation_frame(f.borrow().as_ref().unwrap());
