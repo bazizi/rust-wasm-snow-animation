@@ -107,6 +107,7 @@ pub fn init_rust() {
             if self.position.1 + self.size.1 <= self.canvas_dimentions.1 {
                 self.position.1 += self.velocity.1;
             } else {
+                // Once the particles hit the ground we start incrementing their iteration so we remove them after MAX_ITERATION
                 self.iteration += 1;
             }
         }
@@ -133,32 +134,31 @@ pub fn init_rust() {
         }
 
         {
+            // need to scope the mutable borrow to avoid runtime panic due to multiple mutable borrows
             let canvas_context = canvas_context.borrow_mut();
             canvas_context.set_fill_style(&JsValue::from_str("darkblue"));
             canvas_context.fill_rect(0., 0., canvas_width, canvas_height);
         }
 
-        {
-            let mut particles = particles.borrow_mut();
-            for i in 0..particles.len() {
-                let particle = particles[i].as_mut().unwrap();
-                log(&JsValue::from_str(format!("{:#?}", particle).as_str()));
-                particle.update();
-                particle.render();
-            }
+        let mut particles = particles.borrow_mut();
+        for i in 0..particles.len() {
+            let particle = particles[i].as_mut().unwrap();
+
+            // Uncomment if logging is needed
+            // log(&JsValue::from_str(format!("{:#?}", particle).as_str()));
+
+            particle.update();
+            particle.render();
         }
 
         // get rid of particles that have hit their max iteration
-        let alive_particles: Vec<Option<Particle>> = particles
-            .borrow_mut()
+        *particles = particles
             .iter_mut()
             .filter(|particle| {
                 return !particle.as_ref().unwrap().reached_max_iteration();
             })
             .map(|particle| particle.take())
             .collect();
-
-        *particles.borrow_mut() = alive_particles;
 
         // Schedule ourself for another requestAnimationFrame callback.
         request_animation_frame(f.borrow().as_ref().unwrap());
