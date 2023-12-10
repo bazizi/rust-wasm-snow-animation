@@ -71,7 +71,7 @@ pub fn init_rust() {
                 canvas_dimentions: canvas_dimentions,
                 position: ((canvas_dimentions.0 - size) * random(), 0.),
                 size: (size, size),
-                velocity: (random() * 1. + 0.001, random() * 1. + 0.1),
+                velocity: (random() * 1. + 0.001, random() * 1. + 1.),
                 iteration: 0,
             }
         }
@@ -113,7 +113,7 @@ pub fn init_rust() {
 
         {
             let canvas_context = canvas_context.borrow_mut();
-            canvas_context.set_fill_style(&JsValue::from_str("blue"));
+            canvas_context.set_fill_style(&JsValue::from_str("darkblue"));
             canvas_context.fill_rect(0., 0., canvas_width, canvas_height);
         }
 
